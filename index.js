@@ -17,8 +17,11 @@ var cors = require('cors');
 
 const { MongoClient, ObjectId } = require('mongodb');
 
-const PUBLIC_URL = "http://188.226.142.229:3001";
-const FRONTEND_PUBLIC_URL = "http://maximschoemaker.com/creative-coding-codex";
+// const PUBLIC_URL = "http://188.226.142.229:3001";
+// const FRONTEND_PUBLIC_URL = "http://maximschoemaker.com/creative-coding-codex";
+
+const PUBLIC_URL = "http://localhost:3001";
+const FRONTEND_PUBLIC_URL = "http://localhost:3000/";
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -38,7 +41,7 @@ app.use(passport.session());
 const port = 3001
 
 
-const dbUrl = `mongodb://${process.env.MONGODB_USER}:${process.env.MONGODB_PASSWORD}@localhost:27017`;
+const dbUrl = `mongodb://${process.env.MONGODB_USER}:${process.env.MONGODB_PASSWORD}@188.226.142.229:27017`;
 const dbName = 'creative-coding-codex'
 let db;
 MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
@@ -112,6 +115,7 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
   });
 
   app.get('/user', function (req, res) {
+    console.log("/user", req.user);
     res.send({ user: req.user || null });
   });
 

@@ -17,11 +17,11 @@ var cors = require('cors');
 
 const { MongoClient, ObjectId } = require('mongodb');
 
-// const PUBLIC_URL = "http://188.226.142.229:3001";
-// const FRONTEND_PUBLIC_URL = "http://maximschoemaker.com/creative-coding-codex";
+const PUBLIC_URL = "http://188.226.142.229:3001";
+const FRONTEND_PUBLIC_URL = "http://maximschoemaker.com/creative-coding-codex";
 
-const PUBLIC_URL = "http://localhost:3001";
-const FRONTEND_PUBLIC_URL = "http://localhost:3000/";
+// const PUBLIC_URL = "http://localhost:3001";
+// const FRONTEND_PUBLIC_URL = "http://localhost:3000/";
 
 app.use(cors({
   origin: (origin, callback) => {

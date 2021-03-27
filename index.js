@@ -83,7 +83,9 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
   });
 
   passport.deserializeUser(function (id, done) {
+    console.log("deserializeUser", id);
     users.findOne({ _id: ObjectId(id) }, function (err, user) {
+      console.log("user", user);
       done(err, user);
     });
   });

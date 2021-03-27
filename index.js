@@ -15,9 +15,14 @@ var session = require("express-session");
 var bodyParser = require('body-parser')
 var cors = require('cors');
 
+const { MongoClient, ObjectId } = require('mongodb');
+
+const PUBLIC_URL = "http://188.226.142.229:3001";
+const FRONTEND_PUBLIC_URL = "http://maximschoemaker.com/creative-coding-codex";
+
 app.use(cors({
   origin: (origin, callback) => {
-    callback(null, ["http://127.0.0.1:3000", "http://localhost:3000", "http://192.168.178.21:3000"]);
+    callback(null, [FRONTEND_PUBLIC_URL, "http://127.0.0.1:3000", "http://localhost:3000", "http://192.168.178.21:3000"]);
   },
 
   credentials: true
@@ -32,7 +37,6 @@ app.use(passport.session());
 
 const port = 3001
 
-const { MongoClient, ObjectId } = require('mongodb');
 
 const dbUrl = `mongodb://${process.env.MONGODB_USER}:${process.env.MONGODB_PASSWORD}@localhost:27017`;
 const dbName = 'creative-coding-codex'
@@ -51,7 +55,7 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
   passport.use(new GitHubStrategy({
     clientID: process.env.GITHUB_CLIENT_ID,
     clientSecret: process.env.GITHUB_CLIENT_SECRET,
-    callbackURL: "http://127.0.0.1:3001/auth/github/callback"
+    callbackURL: PUBLIC_URL + "/auth/github/callback"
   },
     function (accessToken, refreshToken, profile, cb) {
       users.findOneAndUpdate(
@@ -79,7 +83,7 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
   });
 
   const storeRedirectToInSession = (req, res, next) => {
-    req.session.redirectTo = req.get("referer") || 'http://127.0.0.1:3000/';
+    req.session.redirectTo = req.get("referer") || FRONTEND_PUBLIC_URL;
     next();
   };
 
@@ -89,7 +93,7 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
   );
 
   app.get('/auth/github/callback',
-    passport.authenticate('github', { failureRedirect: 'http://127.0.0.1:3000/', failureFlash: true }),
+    passport.authenticate('github', { failureRedirect: FRONTEND_PUBLIC_URL, failureFlash: true }),
     function (req, res) {
       console.log("authenticated", req.user.username);
       // console.log(req.headers);
@@ -99,7 +103,7 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
 
   app.get('/logout', function (req, res) {
     req.logout();
-    const redirectTo = req.get("referer") || 'http://127.0.0.1:3000/';
+    const redirectTo = req.get("referer") || FRONTEND_PUBLIC_URL;
     res.redirect(redirectTo);
   });
 

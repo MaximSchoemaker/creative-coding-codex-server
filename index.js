@@ -84,6 +84,7 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
 
   const storeRedirectToInSession = (req, res, next) => {
     req.session.redirectTo = req.get("referer") || FRONTEND_PUBLIC_URL;
+    console.log("redirectTo", req.session.redirectTo);
     next();
   };
 

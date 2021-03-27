@@ -58,6 +58,8 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
     callbackURL: PUBLIC_URL + "/auth/github/callback"
   },
     function (accessToken, refreshToken, profile, cb) {
+      console.log("github strategy", profile);
+
       users.findOneAndUpdate(
         { githubId: profile.id },
         { $setOnInsert: { username: profile.displayName || profile.username }, },
@@ -68,6 +70,8 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
       )
         .then((user) => {
           return cb(err, user.value);
+        }).catch(error => {
+          console.error(error);
         });
     }
   ));

@@ -32,7 +32,7 @@ app.use(cors({
 }));
 
 app.use(express.static("public"));
-app.use(session({ secret: process.env.SESSION_SECRET, resave: true, saveUninitialized: true }));
+app.use(session({ secret: process.env.SESSION_SECRET /*, resave: true, saveUninitialized: true*/ }));
 app.use(bodyParser.json())
 app.use(passport.initialize());
 app.use(passport.session());
@@ -116,6 +116,10 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
     res.redirect(redirectTo);
   });
 
+  app.get('/user', function (req, res) {
+    console.log("/user", req.user);
+    res.send({ user: req.user || null });
+  });
 
   const ensureLoggedIn = (req, res, next) => {
     if (!req.user)
@@ -123,13 +127,6 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
     else
       next();
   }
-
-  app.get('/user', ensureLoggedIn,
-    function (req, res) {
-      console.log("/user", req.user);
-      res.send({ user: req.user || null });
-    });
-
   const ensureAdmin = (req, res, next) => {
     if (!req.user || !req.user.admin)
       res.status(403).render();

@@ -14,6 +14,7 @@ const urlMetadata = require('url-metadata')
 var session = require("express-session");
 var bodyParser = require('body-parser')
 var cors = require('cors');
+var cookieParser = require('cookie-parser');
 
 const { MongoClient, ObjectId } = require('mongodb');
 
@@ -31,9 +32,11 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.static("public"));
-app.use(session({ secret: process.env.SESSION_SECRET /*, resave: true, saveUninitialized: true*/ }));
+// app.use(express.static("public"));
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(cookieParser(process.env.COOKIE_SECRET));
 app.use(bodyParser.json())
+app.use(session({ secret: process.env.SESSION_SECRET, resave: true, saveUninitialized: true }));
 app.use(passport.initialize());
 app.use(passport.session());
 

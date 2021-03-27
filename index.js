@@ -116,10 +116,11 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
     res.redirect(redirectTo);
   });
 
-  app.get('/user', function (req, res) {
-    console.log("/user", req.user);
-    res.send({ user: req.user || null });
-  });
+  app.get('/user', ensureLoggedIn,
+    function (req, res) {
+      console.log("/user", req.user);
+      res.send({ user: req.user || null });
+    });
 
   const ensureLoggedIn = (req, res, next) => {
     if (!req.user)

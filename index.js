@@ -96,7 +96,7 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
   app.get('/auth/github/callback',
     passport.authenticate('github', { failureRedirect: FRONTEND_PUBLIC_URL, failureFlash: true }),
     function (req, res) {
-      console.log("authenticated", req.user.username);
+      console.log("authenticated", req.user);
       // console.log(req.headers);
       // Successful authentication, redirect home.
       res.redirect(req.session.redirectTo);

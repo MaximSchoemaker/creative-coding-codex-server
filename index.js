@@ -116,11 +116,6 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
     res.redirect(redirectTo);
   });
 
-  app.get('/user', ensureLoggedIn,
-    function (req, res) {
-      console.log("/user", req.user);
-      res.send({ user: req.user || null });
-    });
 
   const ensureLoggedIn = (req, res, next) => {
     if (!req.user)
@@ -128,6 +123,13 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
     else
       next();
   }
+
+  app.get('/user', ensureLoggedIn,
+    function (req, res) {
+      console.log("/user", req.user);
+      res.send({ user: req.user || null });
+    });
+
   const ensureAdmin = (req, res, next) => {
     if (!req.user || !req.user.admin)
       res.status(403).render();

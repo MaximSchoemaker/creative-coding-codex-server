@@ -22,7 +22,7 @@ const FRONTEND_PUBLIC_URL = "http://maximschoemaker.com/creative-coding-codex";
 
 app.use(cors({
   origin: (origin, callback) => {
-    callback(null, [FRONTEND_PUBLIC_URL, "http://127.0.0.1:3000", "http://localhost:3000", "http://192.168.178.21:3000"]);
+    callback(null, ["http://maximschoemaker.com", "http://127.0.0.1:3000", "http://localhost:3000", "http://192.168.178.21:3000"]);
   },
 
   credentials: true

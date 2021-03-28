@@ -18,13 +18,9 @@ var cookieParser = require('cookie-parser');
 
 const { MongoClient, ObjectId } = require('mongodb');
 
-const PUBLIC_DOMAIN = ".maximschoemaker.com";
-const PUBLIC_PATH = "/creative-coding-codex";
 const PUBLIC_URL = "http://188.226.142.229:3001";
 const FRONTEND_PUBLIC_URL = "http://maximschoemaker.com/creative-coding-codex";
 
-// const PUBLIC_DOMAIN = "localhost";
-// const PUBLIC_PATH = "/";
 // const PUBLIC_URL = "http://localhost:3001";
 // const FRONTEND_PUBLIC_URL = "http://localhost:3000/";
 
@@ -42,7 +38,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.json())
 app.use(session({
   secret: process.env.SESSION_SECRET, resave: true, saveUninitialized: true,
-  cookie: { httpOnly: true, secure: false, path: PUBLIC_PATH },
+  cookie: { httpOnly: true, secure: false },
 }));
 app.use(passport.initialize());
 app.use(passport.session());
@@ -126,7 +122,7 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
 
   app.get('/user', function (req, res) {
     console.log("/user", req.user);
-    console.log("cookie", req.session);
+    console.log("cookie", req);
     res.send({ user: req.user || null });
   });
 

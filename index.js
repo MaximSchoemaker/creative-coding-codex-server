@@ -40,7 +40,7 @@ app.use(cookieParser(process.env.COOKIE_SECRET));
 app.use(bodyParser.json())
 app.use(session({
   secret: process.env.SESSION_SECRET, resave: true, saveUninitialized: true,
-  cookie: { sameSite: 'none' },
+  cookie: { sameSite: 'none', secure: true },
 }));
 app.use(passport.initialize());
 app.use(passport.session());

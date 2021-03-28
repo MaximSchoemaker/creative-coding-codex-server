@@ -40,7 +40,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.json())
 app.use(session({
   secret: process.env.SESSION_SECRET, resave: true, saveUninitialized: true,
-  cookie: { httpOnly: true, secure: false, domain: PUBLIC_DOMAIN, maxAge: 60 * 60 * 24 * 1000 },
+  cookie: { domain: PUBLIC_DOMAIN, maxAge: 60 * 60 * 24 * 1000 },
 }));
 app.use(passport.initialize());
 app.use(passport.session());
@@ -91,7 +91,9 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
   });
 
   passport.deserializeUser(function (id, done) {
+    console.log("deserialize user", id);
     users.findOne({ _id: ObjectId(id) }, function (err, user) {
+      console.log("user", user);
       done(err, user);
     });
   });

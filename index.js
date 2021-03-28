@@ -34,9 +34,12 @@ app.use(cors({
 
 // app.use(express.static("public"));
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(cookieParser(process.env.COOKIE_SECRET));
+// app.use(cookieParser(process.env.COOKIE_SECRET));
 app.use(bodyParser.json())
-app.use(session({ secret: process.env.SESSION_SECRET, resave: true, saveUninitialized: true }));
+app.use(session({
+  secret: process.env.SESSION_SECRET, resave: true, saveUninitialized: true,
+  cookie: { domain: PUBLIC_URL },
+}));
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -86,9 +89,7 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
   });
 
   passport.deserializeUser(function (id, done) {
-    console.log("deserializeUser", id);
     users.findOne({ _id: ObjectId(id) }, function (err, user) {
-      console.log("user", user);
       done(err, user);
     });
   });
@@ -166,9 +167,10 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
 
   app.post('/entries/new',
     ensureAdmin,
-    constructNewEntry,
+    // constructNewEntry,
     (req, res) => {
-      entries.insertOne(req.newEntry).then(results => {
+      console.log(req.body.name);
+      entries.insertOne({ name: req.body.name }).then(results => {
         entries.find().toArray()
           .then(results => {
             // console.log(results)

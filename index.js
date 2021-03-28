@@ -14,17 +14,19 @@ const urlMetadata = require('url-metadata')
 var session = require("express-session");
 var bodyParser = require('body-parser')
 var cors = require('cors');
-var cookieParser = require('cookie-parser');
+// var cookieParser = require('cookie-parser');
+var https = require('https');
 
 const { MongoClient, ObjectId } = require('mongodb');
 
-// const PUBLIC_DOMAIN = "188.226.142.229";
-// const PUBLIC_URL = "http://188.226.142.229:3001";
-// const FRONTEND_PUBLIC_URL = "http://maximschoemaker.com/creative-coding-codex";
+var privateKey = fs.readFileSync('sslcert/server.key', 'utf8');
+var certificate = fs.readFileSync('sslcert/server.crt', 'utf8');
 
-const PUBLIC_DOMAIN = "";
-const PUBLIC_URL = "http://localhost:3001";
-const FRONTEND_PUBLIC_URL = "http://localhost:3000/";
+const PUBLIC_URL = "http://188.226.142.229:3001";
+const FRONTEND_PUBLIC_URL = "http://maximschoemaker.com/creative-coding-codex";
+
+// const PUBLIC_URL = "http://localhost:3001";
+// const FRONTEND_PUBLIC_URL = "http://localhost:3000/";
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -36,15 +38,15 @@ app.use(cors({
 
 // app.use(express.static("public"));
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(cookieParser(process.env.COOKIE_SECRET));
+// app.use(cookieParser(process.env.COOKIE_SECRET));
 app.use(bodyParser.json())
 app.use(session({
   secret: process.env.SESSION_SECRET, resave: true, saveUninitialized: true,
   cookie: {
-    maxAge: 24 * 60 * 60 * 100,
-    secure: true,
-    httpOnly: true,
-    sameSite: 'none'
+    // maxAge: 24 * 60 * 60 * 100,
+    // secure: true,
+    // httpOnly: true,
+    // sameSite: 'none',
   },
 }));
 app.use(passport.initialize());
@@ -121,7 +123,8 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
       console.log("authenticated", req.user);
       // console.log(req.headers);
       // Successful authentication, redirect home.
-      res.redirect(req.session.redirectTo);
+      // console.log(req.session.redirectTo);
+      res.redirect(FRONTEND_PUBLIC_URL);
     });
 
   app.get('/logout', function (req, res) {

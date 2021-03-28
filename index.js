@@ -42,7 +42,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.json())
 app.use(session({
   secret: process.env.SESSION_SECRET, resave: true, saveUninitialized: true,
-  cookie: { domain: PUBLIC_DOMAIN, path: PUBLIC_PATH },
+  cookie: { /*domain: PUBLIC_DOMAIN,*/ httpOnly: true, secure: false, path: PUBLIC_PATH },
 }));
 app.use(passport.initialize());
 app.use(passport.session());

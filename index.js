@@ -18,12 +18,12 @@ var cookieParser = require('cookie-parser');
 
 const { MongoClient, ObjectId } = require('mongodb');
 
-const PUBLIC_DOMAIN = "188.226.142.229";
-const PUBLIC_URL = "http://" + PUBLIC_DOMAIN + ":3001";
+const PUBLIC_DOMAIN = "maximschoemaker.com";
+const PUBLIC_URL = "http://188.226.142.229:3001";
 const FRONTEND_PUBLIC_URL = "http://maximschoemaker.com/creative-coding-codex";
 
 // const PUBLIC_DOMAIN = "localhost";
-// const PUBLIC_URL = "http://" + PUBLIC_DOMAIN + ":3001";
+// const PUBLIC_URL = "http://localhost:3001";
 // const FRONTEND_PUBLIC_URL = "http://localhost:3000/";
 
 app.use(cors({

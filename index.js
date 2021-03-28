@@ -18,11 +18,13 @@ var cookieParser = require('cookie-parser');
 
 const { MongoClient, ObjectId } = require('mongodb');
 
-const PUBLIC_URL = "http://188.226.142.229:3001";
-const FRONTEND_PUBLIC_URL = "http://maximschoemaker.com/creative-coding-codex";
+// const PUBLIC_DOMAIN = "188.226.142.229";
+// const PUBLIC_URL = "http://" + PUBLIC_DOMAIN + ":3001";
+// const FRONTEND_PUBLIC_URL = "http://maximschoemaker.com/creative-coding-codex";
 
-// const PUBLIC_URL = "http://localhost:3001";
-// const FRONTEND_PUBLIC_URL = "http://localhost:3000/";
+const PUBLIC_DOMAIN = "localhost";
+const PUBLIC_URL = "http://" + PUBLIC_DOMAIN + ":3001";
+const FRONTEND_PUBLIC_URL = "http://localhost:3000/";
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -38,7 +40,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.json())
 app.use(session({
   secret: process.env.SESSION_SECRET, resave: true, saveUninitialized: true,
-  cookie: { domain: PUBLIC_URL },
+  cookie: { domain: PUBLIC_DOMAIN },
 }));
 app.use(passport.initialize());
 app.use(passport.session());

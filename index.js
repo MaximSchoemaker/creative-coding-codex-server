@@ -32,7 +32,6 @@ app.use(cors({
   origin: (origin, callback) => {
     callback(null, ["http://maximschoemaker.com", "http://127.0.0.1:3000", "http://localhost:3000", "http://192.168.178.21:3000"]);
   },
-
   credentials: true
 }));
 
@@ -46,7 +45,7 @@ app.use(session({
     // maxAge: 24 * 60 * 60 * 100,
     // secure: true,
     // httpOnly: true,
-    // sameSite: 'none',
+    sameSite: 'strict',
   },
 }));
 app.use(passport.initialize());

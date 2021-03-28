@@ -126,7 +126,7 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
 
   app.get('/user', function (req, res) {
     console.log("/user", req.user);
-    console.log(JSON.stringify(req.cookies));
+    console.log("cookie", req.session);
     res.send({ user: req.user || null });
   });
 

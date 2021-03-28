@@ -36,7 +36,7 @@ app.use(cors({
 
 // app.use(express.static("public"));
 app.use(express.static(path.join(__dirname, 'public')));
-// app.use(cookieParser(process.env.COOKIE_SECRET));
+app.use(cookieParser(process.env.COOKIE_SECRET));
 app.use(bodyParser.json())
 app.use(session({
   secret: process.env.SESSION_SECRET, resave: true, saveUninitialized: true,

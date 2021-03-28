@@ -40,7 +40,7 @@ app.use(cookieParser(process.env.COOKIE_SECRET));
 app.use(bodyParser.json())
 app.use(session({
   secret: process.env.SESSION_SECRET, resave: true, saveUninitialized: true,
-  cookie: { domain: PUBLIC_DOMAIN, maxAge: 60 * 60 * 24 * 1000 },
+  // cookie: { domain: PUBLIC_DOMAIN, maxAge: 60 * 60 * 24 * 1000 },
 }));
 app.use(passport.initialize());
 app.use(passport.session());

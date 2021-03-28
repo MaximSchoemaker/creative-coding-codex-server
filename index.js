@@ -302,10 +302,11 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
   const multer = require("multer");
 
   const handleError = (err, res) => {
+    console.log(err);
     res
       .status(500)
       .contentType("text/plain")
-      .end("Oops! Something went wrong!");
+      .end(err);
   };
 
   const upload = multer({

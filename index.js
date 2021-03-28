@@ -18,13 +18,13 @@ var cookieParser = require('cookie-parser');
 
 const { MongoClient, ObjectId } = require('mongodb');
 
-const PUBLIC_DOMAIN = "188.226.142.229";
-const PUBLIC_URL = "http://188.226.142.229:3001";
-const FRONTEND_PUBLIC_URL = "http://maximschoemaker.com/creative-coding-codex";
+// const PUBLIC_DOMAIN = "188.226.142.229";
+// const PUBLIC_URL = "http://188.226.142.229:3001";
+// const FRONTEND_PUBLIC_URL = "http://maximschoemaker.com/creative-coding-codex";
 
-// const PUBLIC_DOMAIN = "";
-// const PUBLIC_URL = "http://localhost:3001";
-// const FRONTEND_PUBLIC_URL = "http://localhost:3000/";
+const PUBLIC_DOMAIN = "";
+const PUBLIC_URL = "http://localhost:3001";
+const FRONTEND_PUBLIC_URL = "http://localhost:3000/";
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -40,7 +40,7 @@ app.use(cookieParser(process.env.COOKIE_SECRET));
 app.use(bodyParser.json())
 app.use(session({
   secret: process.env.SESSION_SECRET, resave: true, saveUninitialized: true,
-  // cookie: { domain: PUBLIC_DOMAIN, maxAge: 60 * 60 * 24 * 1000 },
+  cookie: { sameSite: 'none' },
 }));
 app.use(passport.initialize());
 app.use(passport.session());
@@ -127,7 +127,6 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
 
   app.get('/user', function (req, res) {
     console.log("/user", req.user);
-    console.log("sessionStore", JSON.stringify(req.sessionStore));
     console.log("session", JSON.stringify(req.session));
     res.send({ user: req.user || null });
   });

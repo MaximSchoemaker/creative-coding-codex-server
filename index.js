@@ -19,8 +19,8 @@ var https = require('https');
 
 const { MongoClient, ObjectId } = require('mongodb');
 
-var privateKey = fs.readFileSync('sslcert/server.key', 'utf8');
-var certificate = fs.readFileSync('sslcert/server.crt', 'utf8');
+// var privateKey = fs.readFileSync('sslcert/server.key', 'utf8');
+// var certificate = fs.readFileSync('sslcert/server.crt', 'utf8');
 
 const PUBLIC_URL = "http://188.226.142.229:3001";
 const FRONTEND_PUBLIC_URL = "http://maximschoemaker.com/creative-coding-codex";

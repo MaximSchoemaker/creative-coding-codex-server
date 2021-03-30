@@ -390,7 +390,9 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
   // });
 
   app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, process.env.BUILD_PATH, 'index.html'))
+    const path = path.join(__dirname, process.env.BUILD_PATH, 'index.html');
+    console.log(path);
+    res.sendFile(path)
   })
 
   app.listen(port, () => {

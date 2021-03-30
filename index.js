@@ -24,7 +24,7 @@ const { MongoClient, ObjectId } = require('mongodb');
 
 app.use(cors({
   origin: (origin, callback) => {
-    callback(null, ["http://maximschoemaker.com", "http://127.0.0.1:3000", "http://localhost:3000", "http://192.168.178.21:3000"]);
+    callback(null, ["http://127.0.0.1:3000", "http://localhost:3000", "http://192.168.178.21:3000"]);
   },
   credentials: true
 }));
@@ -54,7 +54,7 @@ app.use(passport.session());
 const port = 3001
 
 
-const dbUrl = `mongodb://${process.env.MONGODB_USER}:${process.env.MONGODB_PASSWORD}@188.226.142.229:27017`;
+const dbUrl = `mongodb://${process.env.MONGODB_USER}:${process.env.MONGODB_PASSWORD}@${process.env.MONGODB_ENDPOINT}`;
 const dbName = 'creative-coding-codex'
 let db;
 MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
@@ -65,6 +65,20 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
   console.log(`Connected MongoDB: ${dbUrl}`)
   console.log(`Database: ${dbName}`)
 
+
+  const log = (req, res, next) => {
+    console.log();
+    console.log(req.method, req.originalUrl);
+    if (Object.keys(req.body).length)
+      console.log("body", req.body);
+    if (Object.keys(req.query).length)
+      console.log("query", req.query);
+    // if (Object.keys(req.params).length)
+    //   console.log("params", req.params);
+    next();
+  }
+
+  app.use(log);
 
   const users = db.collection('users')
 
@@ -83,7 +97,6 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
         }
       )
         .then((user) => {
-          console.log("github strategy", user);
           return cb(err, user.value);
         }).catch(error => {
           console.error(error);
@@ -92,14 +105,11 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
   ));
 
   passport.serializeUser(function (user, done) {
-    console.log("serialize user", user);
     done(null, user._id);
   });
 
   passport.deserializeUser(function (id, done) {
-    console.log("deserialize user", id);
     users.findOne({ _id: ObjectId(id) }, function (err, user) {
-      console.log("user", user);
       done(err, user);
     });
   });
@@ -110,6 +120,7 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
     next();
   };
 
+
   app.get('/auth/github',
     storeRedirectToInSession,
     passport.authenticate('github'),
@@ -119,21 +130,18 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
     passport.authenticate('github', { failureRedirect: process.env.FRONTEND_PUBLIC_URL, failureFlash: true }),
     function (req, res) {
       console.log("authenticated", req.user);
-      // console.log(req.headers);
-      // Successful authentication, redirect home.
-      // console.log(req.session.redirectTo);
-      res.redirect(process.env.FRONTEND_PUBLIC_URL);
+      res.redirect(req.session.redirectTo || process.env.FRONTEND_PUBLIC_URL);
     });
 
-  app.get('/logout', function (req, res) {
-    req.logout();
-    const redirectTo = req.get("referer") || process.env.FRONTEND_PUBLIC_URL;
-    res.redirect(redirectTo);
-  });
+  app.get('/logout',
+    storeRedirectToInSession,
+    function (req, res) {
+      req.logout();
+      // const redirectTo = req.get("referer") || process.env.FRONTEND_PUBLIC_URL;
+      res.redirect(req.session.redirectTo);
+    });
 
   app.get('/user', function (req, res) {
-    console.log("/user", req.user);
-    console.log("session", JSON.stringify(req.session));
     res.send({ user: req.user || null });
   });
 
@@ -180,7 +188,6 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
     ensureAdmin,
     // constructNewEntry,
     (req, res) => {
-      console.log(req.body.name);
       entries.insertOne({ name: req.body.name }).then(results => {
         entries.find().toArray()
           .then(results => {
@@ -223,8 +230,6 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
 
       const { timestamp, text, replyTo } = req.body;
       const comment = { _id: ObjectId(), by: req.user, timestamp, text, replyTo };
-      console.log(req.body);
-      console.log(comment);
       entries.updateOne(
         { _id: ObjectId(req.params.id) },
         { $addToSet: { comments: comment }, }
@@ -244,14 +249,13 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
   app.delete('/entries/:id/comment/:commentId',
     ensureLoggedIn,
     (req, res) => {
-      console.log(req.params);
+      console.log("params", req.params);
 
       entries.updateOne(
         { _id: ObjectId(req.params.id) },
         { $pull: { comments: { _id: ObjectId(req.params.commentId) } } }
       )
         .then(results => {
-
           entries.findOne({ _id: ObjectId(req.params.id) }).then(results => {
             res.send(results);
           });
@@ -272,8 +276,6 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
 
       urlMetadata(url).then(
         function (metadata) {
-          console.log(metadata)
-
           resource.metadata = metadata;
 
           return entries.updateOne(
@@ -319,10 +321,15 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
     storeRedirectToInSession,
     upload.single("file" /* name attribute of <file> element in your form */),
     (req, res) => {
+      if (!req.user) {
+        res.redirect(req.session.redirectTo);
+        return;
+      }
+
       const tempPath = req.file.path;
 
       const targetPath = path.join(__dirname, "public/");
-      const targetFolder = "uploads/"; // + req.user.username + "/";
+      const targetFolder = "uploads/" + req.user._id + "/";
       const targetFile = "image";
       const targetExt = path.extname(req.file.originalname);
 
@@ -335,6 +342,9 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
       const target = targetPath + targetFolder + file + targetExt;
 
       // if (path.extname(req.file.originalname).toLowerCase() === ".png") {
+      if (!fs.existsSync(targetPath + targetFolder))
+        fs.mkdirSync(targetPath + targetFolder);
+
       fs.rename(tempPath, target, err => {
         if (err) return handleError(err, res);
 
@@ -391,7 +401,6 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
 
   app.get('*', (req, res) => {
     const dir = path.join(__dirname, process.env.BUILD_PATH, 'index.html');
-    console.log(dir);
     res.sendFile(dir)
   })
 

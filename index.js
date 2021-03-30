@@ -22,12 +22,6 @@ const { MongoClient, ObjectId } = require('mongodb');
 // var privateKey = fs.readFileSync('sslcert/server.key', 'utf8');
 // var certificate = fs.readFileSync('sslcert/server.crt', 'utf8');
 
-const PUBLIC_URL = "http://188.226.142.229:3001";
-const FRONTEND_PUBLIC_URL = "http://maximschoemaker.com/creative-coding-codex";
-
-// const PUBLIC_URL = "http://localhost:3001";
-// const FRONTEND_PUBLIC_URL = "http://localhost:3000/";
-
 app.use(cors({
   origin: (origin, callback) => {
     callback(null, ["http://maximschoemaker.com", "http://127.0.0.1:3000", "http://localhost:3000", "http://192.168.178.21:3000"]);
@@ -35,8 +29,13 @@ app.use(cors({
   credentials: true
 }));
 
+
+app.use(express.static(path.join(__dirname, process.env.BUILD_PATH)));
+app.use(express.static("public"));
+
 // app.use(express.static("public"));
-app.use(express.static(path.join(__dirname, 'public')));
+// app.use(express.static(path.join(__dirname, 'public')));
+
 // app.use(cookieParser(process.env.COOKIE_SECRET));
 app.use(bodyParser.json())
 app.use(session({
@@ -72,7 +71,7 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
   passport.use(new GitHubStrategy({
     clientID: process.env.GITHUB_CLIENT_ID,
     clientSecret: process.env.GITHUB_CLIENT_SECRET,
-    callbackURL: PUBLIC_URL + "/auth/github/callback"
+    callbackURL: process.env.PUBLIC_URL + "/auth/github/callback"
   },
     function (accessToken, refreshToken, profile, cb) {
       users.findOneAndUpdate(
@@ -106,7 +105,7 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
   });
 
   const storeRedirectToInSession = (req, res, next) => {
-    req.session.redirectTo = req.get("referer") || FRONTEND_PUBLIC_URL;
+    req.session.redirectTo = req.get("referer") || process.env.FRONTEND_PUBLIC_URL;
     console.log("redirectTo", req.session.redirectTo);
     next();
   };
@@ -117,18 +116,18 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
   );
 
   app.get('/auth/github/callback',
-    passport.authenticate('github', { failureRedirect: FRONTEND_PUBLIC_URL, failureFlash: true }),
+    passport.authenticate('github', { failureRedirect: process.env.FRONTEND_PUBLIC_URL, failureFlash: true }),
     function (req, res) {
       console.log("authenticated", req.user);
       // console.log(req.headers);
       // Successful authentication, redirect home.
       // console.log(req.session.redirectTo);
-      res.redirect(FRONTEND_PUBLIC_URL);
+      res.redirect(process.env.FRONTEND_PUBLIC_URL);
     });
 
   app.get('/logout', function (req, res) {
     req.logout();
-    const redirectTo = req.get("referer") || FRONTEND_PUBLIC_URL;
+    const redirectTo = req.get("referer") || process.env.FRONTEND_PUBLIC_URL;
     res.redirect(redirectTo);
   });
 
@@ -322,17 +321,18 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
     (req, res) => {
       const tempPath = req.file.path;
 
-      const targetPath = path.join(__dirname, "./uploads/");
+      const targetPath = path.join(__dirname, "public/");
+      const targetFolder = "uploads/"; // + req.user.username + "/";
       const targetFile = "image";
       const targetExt = path.extname(req.file.originalname);
 
       let file = targetFile;
       let i = 1;
-      while (fs.existsSync(targetPath + file + targetExt)) {
+      while (fs.existsSync(targetPath + targetFolder + file + targetExt)) {
         i++
         file = "image_" + i;
       }
-      const target = targetPath + file + targetExt;
+      const target = targetPath + targetFolder + file + targetExt;
 
       // if (path.extname(req.file.originalname).toLowerCase() === ".png") {
       fs.rename(tempPath, target, err => {
@@ -340,7 +340,7 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
 
         entries.updateOne(
           { _id: ObjectId(req.query._id) },
-          { $addToSet: { images: { path: file + targetExt } } }
+          { $addToSet: { images: { path: targetFolder + file + targetExt } } }
         )
           .then(results => {
             res.redirect(req.session.redirectTo);
@@ -359,35 +359,39 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
     }
   );
 
-  var mime = {
-    html: 'text/html',
-    txt: 'text/plain',
-    css: 'text/css',
-    gif: 'image/gif',
-    jpg: 'image/jpeg',
-    png: 'image/png',
-    svg: 'image/svg+xml',
-    js: 'application/javascript'
-  };
+  // var mime = {
+  //   html: 'text/html',
+  //   txt: 'text/plain',
+  //   css: 'text/css',
+  //   gif: 'image/gif',
+  //   jpg: 'image/jpeg',
+  //   png: 'image/png',
+  //   svg: 'image/svg+xml',
+  //   js: 'application/javascript'
+  // };
 
 
-  var dir = path.join(__dirname, 'uploads');
-  app.get('*', function (req, res) {
-    var file = path.join(dir, req.path.replace(/\/$/, '/index.html'));
-    if (file.indexOf(dir + path.sep) !== 0) {
-      return res.status(403).end('Forbidden');
-    }
-    var type = mime[path.extname(file).slice(1)] || 'text/plain';
-    var s = fs.createReadStream(file);
-    s.on('open', function () {
-      res.set('Content-Type', type);
-      s.pipe(res);
-    });
-    s.on('error', function () {
-      res.set('Content-Type', 'text/plain');
-      res.status(404).end('Not found');
-    });
-  });
+  // var dir = path.join(__dirname, 'uploads');
+  // app.get('*', function (req, res) {
+  //   var file = path.join(dir, req.path.replace(/\/$/, '/index.html'));
+  //   if (file.indexOf(dir + path.sep) !== 0) {
+  //     return res.status(403).end('Forbidden');
+  //   }
+  //   var type = mime[path.extname(file).slice(1)] || 'text/plain';
+  //   var s = fs.createReadStream(file);
+  //   s.on('open', function () {
+  //     res.set('Content-Type', type);
+  //     s.pipe(res);
+  //   });
+  //   s.on('error', function () {
+  //     res.set('Content-Type', 'text/plain');
+  //     res.status(404).end('Not found');
+  //   });
+  // });
+
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, process.env.BUILD_PATH, 'index.html'))
+  })
 
   app.listen(port, () => {
     console.log(`listening at http://localhost:${port}`)

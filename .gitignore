@@ -5,3 +5,4 @@ node_modules
 /temp
 sslcert/server.crt
 sslcert/server.key
+/public/uploads

@@ -1,7 +1,8 @@
 require('dotenv').config();
 
 const path = require('path');
-const url = require('url');
+const util = require('util')
+const URL = require('url');
 const fs = require('fs');
 const express = require('express')
 const app = express()
@@ -14,13 +15,19 @@ const urlMetadata = require('url-metadata')
 var session = require("express-session");
 var bodyParser = require('body-parser')
 var cors = require('cors');
-// var cookieParser = require('cookie-parser');
 var https = require('https');
 
-const { MongoClient, ObjectId } = require('mongodb');
+var mongoose = require('mongoose');
+var Schema = mongoose.Schema
+  , ObjectId = mongoose.Types.ObjectId;
+
+const asyncHandler = require('express-async-handler')
+const multer = require("multer");
 
 // var privateKey = fs.readFileSync('sslcert/server.key', 'utf8');
 // var certificate = fs.readFileSync('sslcert/server.crt', 'utf8');
+
+fs.rename = util.promisify(fs.rename);
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -33,62 +40,102 @@ app.use(cors({
 app.use(express.static(path.join(__dirname, process.env.BUILD_PATH)));
 app.use(express.static("public"));
 
-// app.use(express.static("public"));
-// app.use(express.static(path.join(__dirname, 'public')));
-
-// app.use(cookieParser(process.env.COOKIE_SECRET));
 app.use(bodyParser.json())
 app.use(session({
   secret: process.env.SESSION_SECRET, resave: true, saveUninitialized: true,
-  cookie: {
-    // maxAge: 24 * 60 * 60 * 100,
-    // secure: true,
-    // httpOnly: true,
-    // sameSite: 'none',
-  },
 }));
 app.use(passport.initialize());
 app.use(passport.session());
 
-
 const port = 3001
-
-
-const dbUrl = `mongodb://${process.env.MONGODB_USER}:${process.env.MONGODB_PASSWORD}@${process.env.MONGODB_ENDPOINT}`;
+const dbUrl = `mongodb://${process.env.MONGODB_USER}:${process.env.MONGODB_PASSWORD}@${process.env.MONGODB_ENDPOINT}/creative-coding-codex?authSource=admin`;
 const dbName = 'creative-coding-codex'
-let db;
-MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
-  if (err) return console.error(err)
-  console.log('Connected to Database')
 
-  db = client.db(dbName)
-  console.log(`Connected MongoDB: ${dbUrl}`)
-  console.log(`Database: ${dbName}`)
+const mongooseOptions = {
+  useUnifiedTopology: true,
+  useNewUrlParser: true,
+  useFindAndModify: false
+}
+console.log(`mongoose.connect`, dbUrl, mongooseOptions)
+mongoose.connect(dbUrl, mongooseOptions).then(() => {
+  console.log(`mongoose connected!`)
+});
 
+const users = mongoose.model('user', new Schema({ _id: ObjectId, username: String, githubId: String, admin: Boolean }));
+const resources = mongoose.model('resource', new Schema({
+  _id: ObjectId, descriptor: String, url: String, metadata: Object,
+  by: { type: ObjectId, ref: 'user' },
+}));
+const images = mongoose.model('image', new Schema({
+  _id: ObjectId, path: String,
+  by: { type: ObjectId, ref: 'user' },
+}));
+const comments = mongoose.model('comment', new Schema({
+  _id: ObjectId, timestamp: Number, text: String, replyTo: new Schema({ type: String, id: String }),
+  by: { type: ObjectId, ref: 'user' },
+}));
+const entries = mongoose.model('entry', new Schema({
+  _id: ObjectId, name: String,
+  resources: [{ type: ObjectId, ref: 'resource' }],
+  images: [{ type: ObjectId, ref: 'image' }],
+  comments: [{ type: ObjectId, ref: 'comment' }],
+  by: { type: ObjectId, ref: 'user' },
+}));
 
-  const log = (req, res, next) => {
-    console.log();
-    console.log(req.method, req.originalUrl);
-    if (Object.keys(req.body).length)
-      console.log("body", req.body);
-    if (Object.keys(req.query).length)
-      console.log("query", req.query);
-    // if (Object.keys(req.params).length)
-    //   console.log("params", req.params);
+const log = (req, res, next) => {
+  console.log();
+  console.log(req.method, req.originalUrl);
+  if (Object.keys(req.body).length)
+    console.log("body", req.body);
+  if (Object.keys(req.query).length)
+    console.log("query", req.query);
+  // if (Object.keys(req.params).length)
+  //   console.log("params", req.params);
+  next();
+}
+
+app.use(log);
+
+const ensureLoggedIn = (req, res, next) => {
+  if (!req.user)
+    res.status(403).render();
+  else
     next();
+}
+const ensureAdmin = (req, res, next) => {
+  if (!req.user || !req.user.admin) {
+    console.log(req.user);
+    res.status(403).render();
   }
+  else
+    next();
+}
 
-  app.use(log);
+function populate(query) {
+  const populateBy = { path: "by", select: { "_id": 1, "username": 1 } };
+  return query
+    .populate({ path: "by", select: { "_id": 1, "username": 1, "admin": 1 } })
+    .populate({ path: "resources", populate: populateBy })
+    .populate({ path: "images", populate: populateBy })
+    .populate({ path: "comments", populate: populateBy })
+}
 
-  const users = db.collection('users')
+async function getEntries() {
+  return await populate(entries.find())
+}
 
-  passport.use(new GitHubStrategy({
-    clientID: process.env.GITHUB_CLIENT_ID,
-    clientSecret: process.env.GITHUB_CLIENT_SECRET,
-    callbackURL: process.env.PUBLIC_URL + "/auth/github/callback"
-  },
-    function (accessToken, refreshToken, profile, cb) {
-      users.findOneAndUpdate(
+async function getEntry(id) {
+  return await populate(entries.findOne({ _id: ObjectId(id) }))
+}
+
+passport.use(new GitHubStrategy({
+  clientID: process.env.GITHUB_CLIENT_ID,
+  clientSecret: process.env.GITHUB_CLIENT_SECRET,
+  callbackURL: process.env.PUBLIC_URL + "/auth/github/callback"
+},
+  async function (accessToken, refreshToken, profile, cb) {
+    try {
+      const user = await users.findOneAndUpdate(
         { githubId: profile.id },
         { $setOnInsert: { username: profile.displayName || profile.username }, },
         {
@@ -96,316 +143,208 @@ MongoClient.connect(dbUrl, { useUnifiedTopology: true }, (err, client) => {
           upsert: true,
         }
       )
-        .then((user) => {
-          return cb(err, user.value);
-        }).catch(error => {
-          console.error(error);
-        });
-    }
-  ));
+      return cb(null, user);
+    } catch (error) {
+      console.error(error);
+      return cb(error, null);
+    };
+  }
+));
 
-  passport.serializeUser(function (user, done) {
-    done(null, user._id);
+passport.serializeUser(function (user, done) {
+  done(null, user._id);
+});
+
+passport.deserializeUser(function (id, done) {
+  users.findOne({ _id: ObjectId(id) }, function (err, user) {
+    done(err, user);
+  });
+});
+
+const storeRedirectToInSession = (req, res, next) => {
+  req.session.redirectTo = req.get("referer") || process.env.FRONTEND_PUBLIC_URL;
+  console.log("redirectTo", req.session.redirectTo);
+  next();
+};
+
+
+app.get('/auth/github',
+  storeRedirectToInSession,
+  passport.authenticate('github'),
+);
+
+app.get('/auth/github/callback',
+  passport.authenticate('github', { failureRedirect: process.env.FRONTEND_PUBLIC_URL, failureFlash: true }),
+  function (req, res) {
+    console.log("authenticated", req.user);
+    res.redirect(req.session.redirectTo || process.env.FRONTEND_PUBLIC_URL);
   });
 
-  passport.deserializeUser(function (id, done) {
-    users.findOne({ _id: ObjectId(id) }, function (err, user) {
-      done(err, user);
-    });
-  });
+app.get('/logout',
+  storeRedirectToInSession,
+  (req, res) => {
+    req.logout();
+    res.redirect(req.session.redirectTo);
+  }
+);
 
-  const storeRedirectToInSession = (req, res, next) => {
-    req.session.redirectTo = req.get("referer") || process.env.FRONTEND_PUBLIC_URL;
-    console.log("redirectTo", req.session.redirectTo);
-    next();
-  };
+app.get('/user', function (req, res) {
+  res.send({ user: req.user || null });
+});
 
 
-  app.get('/auth/github',
-    storeRedirectToInSession,
-    passport.authenticate('github'),
-  );
+app.get('/entries',
+  asyncHandler(async (req, res) => {
+    res.send(await getEntries());
+  })
+)
 
-  app.get('/auth/github/callback',
-    passport.authenticate('github', { failureRedirect: process.env.FRONTEND_PUBLIC_URL, failureFlash: true }),
-    function (req, res) {
-      console.log("authenticated", req.user);
-      res.redirect(req.session.redirectTo || process.env.FRONTEND_PUBLIC_URL);
-    });
+app.post('/entries',
+  ensureAdmin,
+  asyncHandler(async (req, res) => {
+    await entries.create({ _id: new ObjectId(), name: req.body.name, by: req.user._id })
+    res.send(await getEntries());
+  })
+)
 
-  app.get('/logout',
-    storeRedirectToInSession,
-    function (req, res) {
-      req.logout();
-      // const redirectTo = req.get("referer") || process.env.FRONTEND_PUBLIC_URL;
+app.put('/entries/:entryId',
+  ensureAdmin,
+  asyncHandler(async (req, res) => {
+    const { entryId } = req.params;
+    await entries.updateOne({ _id: ObjectId(entryId) }, { $set: req.body })
+    res.send(await getEntries());
+  })
+)
+
+app.delete('/entries/:entryId',
+  ensureAdmin,
+  asyncHandler(async (req, res) => {
+    const { entryId } = req.params;
+    await entries.deleteOne({ _id: ObjectId(entryId) })
+    res.send(await getEntries());
+  })
+)
+
+app.post('/entries/:entryId/comment',
+  ensureLoggedIn,
+  asyncHandler(async (req, res) => {
+    const { entryId } = req.params;
+    const { timestamp, text, replyTo } = req.body;
+
+    const comment = await comments.create({ _id: ObjectId(), by: ObjectId(req.user._id), timestamp, text, replyTo });
+
+    await entries.updateOne(
+      { _id: ObjectId(entryId) },
+      { $addToSet: { comments: ObjectId(comment._id) }, }
+    )
+
+    res.send(await getEntry(entryId));
+  })
+)
+
+app.delete('/entries/:entryId/comment/:commentId',
+  ensureLoggedIn,
+  asyncHandler(async (req, res) => {
+    const { entryId, commentId } = req.params;
+
+    await comments.deleteOne({ _id: ObjectId(commentId) })
+
+    await entries.updateOne(
+      { _id: ObjectId(entryId) },
+      { $pull: { comments: ObjectId(commentId) } }
+    )
+
+    res.send(await getEntry(entryId));
+  })
+)
+
+app.post('/entries/:entryId/resource',
+  ensureLoggedIn,
+  asyncHandler(async (req, res) => {
+    const { entryId, commentId } = req.params;
+    const { descriptor, url: urlString } = req.body;
+
+
+    const url = URL.parse(urlString);
+    if (!url.protocol)
+      url.href = "http://" + url.href;
+
+    console.log(url);
+    const metadata = await urlMetadata(url.href)
+
+    const resource = await resources.create({ _id: ObjectId(), by: req.user._id, descriptor, url: url.href, metadata });
+
+    await entries.updateOne(
+      { _id: ObjectId(entryId) },
+      { $addToSet: { resources: ObjectId(resource._id) } }
+    )
+
+    res.send(await getEntry(entryId));
+  })
+)
+
+
+
+const upload = multer({
+  dest: "/temp"
+  // you might also want to set some limits: https://github.com/expressjs/multer#limits
+});
+
+app.post(
+  "/entries/:entryId/image",
+  storeRedirectToInSession,
+  upload.single("file" /* name attribute of <file> element in your form */),
+  asyncHandler(async (req, res) => {
+    const { entryId } = req.params;
+
+    if (!req.user) {
       res.redirect(req.session.redirectTo);
-    });
-
-  app.get('/user', function (req, res) {
-    res.send({ user: req.user || null });
-  });
-
-  const ensureLoggedIn = (req, res, next) => {
-    if (!req.user)
-      res.status(403).render();
-    else
-      next();
-  }
-  const ensureAdmin = (req, res, next) => {
-    if (!req.user || !req.user.admin)
-      res.status(403).render();
-    else
-      next();
-  }
-
-  const entries = db.collection('entries')
-
-  app.get('/entries',
-    // ensureLoggedIn,
-    (req, res) => {
-      entries.find().toArray()
-        .then(results => {
-          res.send(results);
-        })
-        .catch(error => console.error(error))
-    })
-
-  const constructNewEntry = (req, res, next) => {
-    let { name, resources, images, comments } = req.body;
-
-    // resources = resources.map(({ descriptor, url }) => ({ descriptor, url }));
-    // images = images.map(({ path }) => ({ path }));
-    // comments = comments.map(({ by, timestamp, text, replyTo }) => ({ by, timestamp, text, replyTo }));
-
-    req.newEntry = { name, resources, images, comments };
-    if (name && resources.every(l => l.descriptor && l.url))
-      next();
-    else
-      res.status(400).render();
-  }
-
-  app.post('/entries/new',
-    ensureAdmin,
-    // constructNewEntry,
-    (req, res) => {
-      entries.insertOne({ name: req.body.name }).then(results => {
-        entries.find().toArray()
-          .then(results => {
-            // console.log(results)
-            res.send(results);
-          })
-          .catch(error => console.error(error))
-      });
-    })
-
-  app.post('/entries/update',
-    ensureAdmin,
-    constructNewEntry,
-    (req, res) => {
-      entries.updateOne({ _id: ObjectId(req.body._id) }, { $set: req.newEntry }).then(results => {
-        entries.find().toArray()
-          .then(results => {
-            res.send(results);
-          })
-          .catch(error => console.error(error))
-      });
-    })
-
-  app.post('/entries/remove',
-    ensureAdmin,
-    (req, res) => {
-      entries.removeOne({ _id: ObjectId(req.body._id) }).then(results => {
-        entries.find().toArray()
-          .then(results => {
-            res.send(results);
-          })
-          .catch(error => console.error(error))
-      });
-    })
-
-  app.post('/entries/:id/comment',
-    ensureLoggedIn,
-    (req, res) => {
-      // console.log(req.params);
-
-      const { timestamp, text, replyTo } = req.body;
-      const comment = { _id: ObjectId(), by: req.user, timestamp, text, replyTo };
-      entries.updateOne(
-        { _id: ObjectId(req.params.id) },
-        { $addToSet: { comments: comment }, }
-      )
-        .then(results => {
-
-          entries.findOne({ _id: ObjectId(req.params.id) }).then(results => {
-            res.send(results);
-          });
-
-        }).catch(error => {
-          console.error(error);
-          res.status(400).end();
-        });
-    })
-
-  app.delete('/entries/:id/comment/:commentId',
-    ensureLoggedIn,
-    (req, res) => {
-      console.log("params", req.params);
-
-      entries.updateOne(
-        { _id: ObjectId(req.params.id) },
-        { $pull: { comments: { _id: ObjectId(req.params.commentId) } } }
-      )
-        .then(results => {
-          entries.findOne({ _id: ObjectId(req.params.id) }).then(results => {
-            res.send(results);
-          });
-
-        }).catch(error => {
-          console.error(error);
-          res.status(400).end();
-        });
-    })
-
-  app.post('/entries/:id/resource',
-    ensureLoggedIn,
-    (req, res) => {
-      // console.log(req.params);
-
-      const { descriptor, url } = req.body;
-      const resource = { _id: ObjectId(), by: req.user, descriptor, url, };
-
-      urlMetadata(url).then(
-        function (metadata) {
-          resource.metadata = metadata;
-
-          return entries.updateOne(
-            { _id: ObjectId(req.params.id) },
-            { $addToSet: { resources: resource }, }
-          )
-            .then(results => {
-
-              entries.findOne({ _id: ObjectId(req.params.id) }).then(results => {
-                res.send(results);
-              });
-
-            }).catch(error => {
-              console.error(error);
-              res.status(400).end();
-            });
-        },
-        function (error) {
-          console.log(error)
-        })
-
-
-    })
-
-  const multer = require("multer");
-
-  const handleError = (err, res) => {
-    console.log(err);
-    res
-      .status(500)
-      .contentType("text/plain")
-      .end(err);
-  };
-
-  const upload = multer({
-    dest: "/temp"
-    // you might also want to set some limits: https://github.com/expressjs/multer#limits
-  });
-
-
-  app.post(
-    "/upload",
-    storeRedirectToInSession,
-    upload.single("file" /* name attribute of <file> element in your form */),
-    (req, res) => {
-      if (!req.user) {
-        res.redirect(req.session.redirectTo);
-        return;
-      }
-
-      const tempPath = req.file.path;
-
-      const targetPath = path.join(__dirname, "public/");
-      const targetFolder = "uploads/" + req.user._id + "/";
-      const targetFile = "image";
-      const targetExt = path.extname(req.file.originalname);
-
-      let file = targetFile;
-      let i = 1;
-      while (fs.existsSync(targetPath + targetFolder + file + targetExt)) {
-        i++
-        file = "image_" + i;
-      }
-      const target = targetPath + targetFolder + file + targetExt;
-
-      // if (path.extname(req.file.originalname).toLowerCase() === ".png") {
-      if (!fs.existsSync(targetPath + targetFolder))
-        fs.mkdirSync(targetPath + targetFolder);
-
-      fs.rename(tempPath, target, err => {
-        if (err) return handleError(err, res);
-
-        entries.updateOne(
-          { _id: ObjectId(req.query._id) },
-          { $addToSet: { images: { path: targetFolder + file + targetExt } } }
-        )
-          .then(results => {
-            res.redirect(req.session.redirectTo);
-          });
-      });
-      // } else {
-      //   fs.unlink(tempPath, err => {
-      //     if (err) return handleError(err, res);
-
-      //     res
-      //       .status(403)
-      //       .contentType("text/plain")
-      //       .end("Only .png files are allowed!");
-      //   });
-      // }
+      return;
     }
-  );
 
-  // var mime = {
-  //   html: 'text/html',
-  //   txt: 'text/plain',
-  //   css: 'text/css',
-  //   gif: 'image/gif',
-  //   jpg: 'image/jpeg',
-  //   png: 'image/png',
-  //   svg: 'image/svg+xml',
-  //   js: 'application/javascript'
-  // };
+    const { path: tempPath, originalname } = req.file;
 
+    const targetPath = path.join(__dirname, "public/");
+    const targetFolder = "uploads/" + req.user._id + "/";
+    const targetFile = "image";
+    const targetExt = path.extname(originalname);
 
-  // var dir = path.join(__dirname, 'uploads');
-  // app.get('*', function (req, res) {
-  //   var file = path.join(dir, req.path.replace(/\/$/, '/index.html'));
-  //   if (file.indexOf(dir + path.sep) !== 0) {
-  //     return res.status(403).end('Forbidden');
-  //   }
-  //   var type = mime[path.extname(file).slice(1)] || 'text/plain';
-  //   var s = fs.createReadStream(file);
-  //   s.on('open', function () {
-  //     res.set('Content-Type', type);
-  //     s.pipe(res);
-  //   });
-  //   s.on('error', function () {
-  //     res.set('Content-Type', 'text/plain');
-  //     res.status(404).end('Not found');
-  //   });
-  // });
+    let file = targetFile;
+    let i = 1;
+    while (fs.existsSync(targetPath + targetFolder + file + targetExt)) {
+      i++
+      file = "image_" + i;
+    }
+    const target = targetPath + targetFolder + file + targetExt;
 
-  app.get('*', (req, res) => {
-    const dir = path.join(__dirname, process.env.BUILD_PATH, 'index.html');
-    res.sendFile(dir)
+    if (!fs.existsSync(targetPath + targetFolder))
+      fs.mkdirSync(targetPath + targetFolder);
+
+    await fs.rename(tempPath, target);
+
+    const image = await images.create({
+      _id: new ObjectId(),
+      by: ObjectId(req.user._id),
+      path: targetFolder + file + targetExt
+    });
+    console.log(image);
+
+    await entries.updateOne(
+      { _id: ObjectId(entryId) },
+      { $addToSet: { images: ObjectId(image._id) } },
+    )
+
+    res.redirect(req.session.redirectTo);
   })
+);
 
-  app.listen(port, () => {
-    console.log(`listening at http://localhost:${port}`)
-  })
+app.get('*', (req, res) => {
+  const dir = path.join(__dirname, process.env.BUILD_PATH, 'index.html');
+  res.sendFile(dir)
 })
+
+app.listen(port, () => {
+  console.log(`listening at http://localhost:${port}`)
+})
+
 

@@ -27,10 +27,6 @@ var Schema = mongoose.Schema
 const asyncHandler = require('express-async-handler')
 const multer = require("multer");
 
-// var spawn = require('child_process').spawn;
-
-// const imageConversion = require("image-conversion")
-
 // var privateKey = fs.readFileSync('sslcert/server.key', 'utf8');
 // var certificate = fs.readFileSync('sslcert/server.crt', 'utf8');
 

@@ -50,7 +50,7 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-const port = 3001
+const port = 80
 const dbUrl = `mongodb://${process.env.MONGODB_USER}:${process.env.MONGODB_PASSWORD}@${process.env.MONGODB_ENDPOINT}/creative-coding-codex?authSource=admin`;
 const dbName = 'creative-coding-codex'
 

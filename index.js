@@ -1,5 +1,8 @@
 require('dotenv').config();
 
+// global.atob = require("atob");
+// global.Blob = require('node-blob');
+
 const path = require('path');
 const util = require('util')
 const URL = require('url');
@@ -23,6 +26,10 @@ var Schema = mongoose.Schema
 
 const asyncHandler = require('express-async-handler')
 const multer = require("multer");
+
+// var spawn = require('child_process').spawn;
+
+// const imageConversion = require("image-conversion")
 
 // var privateKey = fs.readFileSync('sslcert/server.key', 'utf8');
 // var certificate = fs.readFileSync('sslcert/server.crt', 'utf8');
@@ -286,8 +293,10 @@ app.post('/entries/:entryId/resource',
 
 
 const upload = multer({
-  dest: "/temp"
-  // you might also want to set some limits: https://github.com/expressjs/multer#limits
+  dest: "/temp",
+  limits: {
+    fileSize: 1100000,
+  },
 });
 
 app.post(
@@ -309,13 +318,13 @@ app.post(
     const targetFile = "image";
     const targetExt = path.extname(originalname);
 
-    let file = targetFile;
+    let fileName = targetFile;
     let i = 1;
-    while (fs.existsSync(targetPath + targetFolder + file + targetExt)) {
+    while (fs.existsSync(targetPath + targetFolder + fileName + targetExt)) {
       i++
-      file = "image_" + i;
+      fileName = "image_" + i;
     }
-    const target = targetPath + targetFolder + file + targetExt;
+    const target = targetPath + targetFolder + fileName + targetExt;
 
     if (!fs.existsSync(targetPath + targetFolder))
       fs.mkdirSync(targetPath + targetFolder);
@@ -325,7 +334,7 @@ app.post(
     const image = await images.create({
       _id: new ObjectId(),
       by: ObjectId(req.user._id),
-      path: targetFolder + file + targetExt
+      path: targetFolder + fileName + targetExt
     });
     console.log(image);
 
@@ -334,9 +343,10 @@ app.post(
       { $addToSet: { images: ObjectId(image._id) } },
     )
 
-    res.redirect(req.session.redirectTo);
+    res.send(await getEntry(entryId));
   })
 );
+
 
 app.get('*', (req, res) => {
   const dir = path.join(__dirname, process.env.BUILD_PATH, 'index.html');

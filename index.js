@@ -346,6 +346,7 @@ app.post(
 
 app.get('*', (req, res) => {
   const dir = path.join(__dirname, process.env.BUILD_PATH, 'index.html');
+  console.log(dir);
   res.sendFile(dir)
 })
 

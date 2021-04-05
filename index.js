@@ -47,7 +47,7 @@ fs.rename = util.promisify(fs.rename);
 
 app.use(cors({
   origin: (origin, callback) => {
-    callback(null, ["http://127.0.0.1:3000", "http://localhost:3000", "http://192.168.178.21:3000", "http://www.cccodex.com"]);
+    callback(null, ["127.0.0.1:3000", "localhost:3000", "192.168.178.21:3000", "www.cccodex.com"]);
   },
   credentials: true
 }));
@@ -58,6 +58,7 @@ app.use(express.static("public"));
 app.use(bodyParser.json())
 app.use(session({
   secret: process.env.SESSION_SECRET, resave: true, saveUninitialized: true,
+  cookie: { httpOnly: false, secure: true },
 }));
 app.use(passport.initialize());
 app.use(passport.session());

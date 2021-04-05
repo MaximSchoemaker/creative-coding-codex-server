@@ -35,7 +35,7 @@ fs.rename = util.promisify(fs.rename);
 
 app.use(cors({
   origin: (origin, callback) => {
-    callback(null, ["http://127.0.0.1:3000", "http://localhost:3000", "http://192.168.178.21:3000"]);
+    callback(null, ["http://127.0.0.1:3000", "http://localhost:3000", "http://192.168.178.21:3000", "http://www.cccodex.com/"]);
   },
   credentials: true
 }));

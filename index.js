@@ -41,9 +41,9 @@ app.use(cors({
 }));
 
 app.use(express.static(path.join(__dirname, process.env.BUILD_PATH)));
-app.use(express.static("public"), {
+app.use(express.static("public", {
   maxAge: 0
-});
+}));
 
 app.use(bodyParser.json())
 app.use(session({

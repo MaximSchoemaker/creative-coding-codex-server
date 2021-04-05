@@ -47,7 +47,7 @@ fs.rename = util.promisify(fs.rename);
 
 app.use(cors({
   origin: (origin, callback) => {
-    callback(null, ["127.0.0.1:3000", "localhost:3000", "192.168.178.21:3000", "www.cccodex.com"]);
+    callback(null, ["127.0.0.1:3000", "localhost:3000", "192.168.178.21:3000", "www.cccodex.com", "cccodex.com"]);
   },
   credentials: true
 }));
@@ -58,7 +58,7 @@ app.use(express.static("public"));
 app.use(bodyParser.json())
 app.use(session({
   secret: process.env.SESSION_SECRET, resave: true, saveUninitialized: true,
-  cookie: { httpOnly: false, secure: true },
+  cookie: { httpOnly: false, /*secure: true*/ },
 }));
 app.use(passport.initialize());
 app.use(passport.session());
@@ -368,7 +368,17 @@ app.get('*', (req, res) => {
 // })
 
 
+
 const httpServer = http.createServer(app);
+// var httpServer = express();
+// httpServer.get('*', function (req, res) {
+//   res.redirect('https://' + req.headers.host + req.url);
+
+//   // Or, if you don't want to automatically detect the domain name from the request header, you can hard code it:
+//   // res.redirect('https://example.com' + req.url);
+// })
+
+
 const httpsServer = https.createServer(credentials, app);
 
 httpServer.listen(80, () => {

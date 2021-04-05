@@ -14,6 +14,7 @@ var passport = require('passport');
 var GitHubStrategy = require('passport-github').Strategy;
 
 const urlMetadata = require('url-metadata')
+const getFavicons = require('get-website-favicon')
 
 var session = require("express-session");
 var bodyParser = require('body-parser')
@@ -66,7 +67,7 @@ mongoose.connect(dbUrl, mongooseOptions).then(() => {
 
 const users = mongoose.model('user', new Schema({ _id: ObjectId, username: String, githubId: String, admin: Boolean }));
 const resources = mongoose.model('resource', new Schema({
-  _id: ObjectId, descriptor: String, url: String, metadata: Object,
+  _id: ObjectId, descriptor: String, url: String, metadata: Object, favicons: Object,
   by: { type: ObjectId, ref: 'user' },
 }));
 const images = mongoose.model('image', new Schema({
@@ -274,8 +275,9 @@ app.post('/entries/:entryId/resource',
 
     console.log(url);
     const metadata = await urlMetadata(url.href)
-
-    const resource = await resources.create({ _id: ObjectId(), by: req.user._id, descriptor, url: url.href, metadata });
+    const favicons = await getFavicons(url.href);
+    console.log(favicons);
+    const resource = await resources.create({ _id: ObjectId(), by: req.user._id, descriptor, url: url.href, metadata, favicons });
 
     await entries.updateOne(
       { _id: ObjectId(entryId) },
@@ -346,7 +348,6 @@ app.post(
 
 app.get('*', (req, res) => {
   const dir = path.join(__dirname, process.env.BUILD_PATH, 'index.html');
-  console.log(dir);
   res.sendFile(dir)
 })
 

@@ -12,6 +12,7 @@
     "express-async-handler": "^1.1.4",
     "express-session": "^1.17.1",
     "filereader": "^0.10.3",
+    "get-website-favicon": "0.0.7",
     "mongoose": "^5.12.2",
     "multer": "^1.4.2",
     "passport": "^0.4.1",

@@ -10,6 +10,9 @@ const fs = require('fs');
 const express = require('express')
 const app = express()
 
+const http = require('http');
+const https = require('https');
+
 var passport = require('passport');
 var GitHubStrategy = require('passport-github').Strategy;
 
@@ -19,7 +22,6 @@ const getFavicons = require('get-website-favicon')
 var session = require("express-session");
 var bodyParser = require('body-parser')
 var cors = require('cors');
-var https = require('https');
 
 var mongoose = require('mongoose');
 var Schema = mongoose.Schema
@@ -28,8 +30,18 @@ var Schema = mongoose.Schema
 const asyncHandler = require('express-async-handler')
 const multer = require("multer");
 
-// var privateKey = fs.readFileSync('sslcert/server.key', 'utf8');
-// var certificate = fs.readFileSync('sslcert/server.crt', 'utf8');
+let credentials;
+if (!process.env.NO_HTTPS) {
+  const privateKey = fs.readFileSync('/etc/letsencrypt/live/www.cccodex.com/privkey.pem', 'utf8');
+  const certificate = fs.readFileSync('/etc/letsencrypt/live/www.cccodex.com/cert.pem', 'utf8');
+  const ca = fs.readFileSync('/etc/letsencrypt/live/www.cccodex.com/chain.pem', 'utf8');
+
+  credentials = {
+    key: privateKey,
+    cert: certificate,
+    ca: ca
+  };
+}
 
 fs.rename = util.promisify(fs.rename);
 
@@ -350,8 +362,19 @@ app.get('*', (req, res) => {
   res.sendFile(dir)
 })
 
-app.listen(port, () => {
-  console.log(`listening at http://localhost:${port}`)
-})
+// app.listen(port, () => {
+//   console.log(`listening at http://localhost:${port}`)
+// })
 
+
+const httpServer = http.createServer(app);
+const httpsServer = https.createServer(credentials, app);
+
+httpServer.listen(80, () => {
+  console.log('HTTP Server running on port 80');
+});
+
+httpsServer.listen(443, () => {
+  console.log('HTTPS Server running on port 443');
+});
 

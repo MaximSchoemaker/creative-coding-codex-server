@@ -32,9 +32,9 @@ const multer = require("multer");
 
 let credentials;
 if (!process.env.NO_HTTPS) {
-  const privateKey = fs.readFileSync('/etc/letsencrypt/live/www.cccodex.com/privkey.pem', 'utf8');
-  const certificate = fs.readFileSync('/etc/letsencrypt/live/www.cccodex.com/cert.pem', 'utf8');
-  const ca = fs.readFileSync('/etc/letsencrypt/live/www.cccodex.com/chain.pem', 'utf8');
+  const privateKey = fs.readFileSync('/etc/letsencrypt/live/api.cccodex.com/privkey.pem', 'utf8');
+  const certificate = fs.readFileSync('/etc/letsencrypt/live/api.cccodex.com/cert.pem', 'utf8');
+  const ca = fs.readFileSync('/etc/letsencrypt/live/api.cccodex.com/chain.pem', 'utf8');
 
   credentials = {
     key: privateKey,
